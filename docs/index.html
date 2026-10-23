@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Sistema experto de crédito: reglas, estrategia evolutiva y lógica difusa.">
+  <title>Crédito · Sistema experto</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.css">
+  <style>body{margin:0;font-family:system-ui,sans-serif;color:#20333f}#estado{max-width:760px;margin:60px auto;padding:24px;line-height:1.6}#estado h1{font-size:28px}#estado p{color:#536873}</style>
+</head>
+<body>
+  <div id="estado" role="status"><h1>Crédito · Sistema experto</h1><p>Cargando la aplicación y Python en tu navegador. La primera visita puede tardar unos minutos y requiere conexión a Internet. Los cálculos se realizan en tu dispositivo.</p></div>
+  <div id="root"></div>
+  <noscript>Activa JavaScript para ejecutar esta aplicación.</noscript>
+  <script type="module">
+    const estado = document.getElementById('estado');
+    try {
+      const { mount } = await import('https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.js');
+      const response = await fetch('./app-bundle.json');
+      if (!response.ok) throw new Error(`No se pudo cargar la aplicación (${response.status}).`);
+      const files = await response.json();
+      await mount({entrypoint:'app.py', files, streamlitConfig:{'client.toolbarMode':'viewer','browser.gatherUsageStats':false,'theme.primaryColor':'#176B64','theme.backgroundColor':'#FFFFFF','theme.secondaryBackgroundColor':'#F3F6F7','theme.textColor':'#20333F'}}, document.getElementById('root'));
+      estado.remove();
+    } catch (error) {
+      estado.textContent = 'No se pudo iniciar la aplicación. Comprueba tu conexión y recarga la página. Detalle: ' + error.message;
+      console.error(error);
+    }
+  </script>
+</body>
+</html>

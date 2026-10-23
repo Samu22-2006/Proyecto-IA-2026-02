@@ -67,3 +67,13 @@ Fitness = 0.50 × capacidad + 0.25 × cercanía de monto + 0.25 × cercanía de 
 El autor confirmó el uso de **ChatGPT** en los sprints originales, sin detallar tareas concretas. En esta integración se utilizó **ChatGPT / Codex** para analizar entregas, implementar y documentar la interfaz, proponer el modelo difuso y preparar pruebas. No se atribuyen otras herramientas sin confirmación.
 
 Proyecto educativo: necesita revisión por expertos, calibración y evaluación de sesgos antes de considerar cualquier uso financiero real.
+
+## GitHub Pages · Python en el navegador
+
+La versión de Pages usa **Stlite 0.85.1 / Pyodide**: ejecuta Streamlit y los mismos módulos Python en el navegador, sin servidor Python. `scripts/build_pages.py` empaqueta las fuentes y los cuatro documentos en `docs/app-bundle.json`. No contiene secretos. Los originales siguen disponibles para descargar dentro de la app.
+
+El workflow `.github/workflows/pages.yml` genera el paquete y lo publica mediante GitHub Actions con cada cambio en `main`. En **Settings → Pages → Build and deployment → Source** debe estar seleccionado **GitHub Actions**. Esa activación necesita permisos de administración del repositorio. La URL prevista, una vez publicado correctamente, es `https://samu22-2006.github.io/Proyecto-IA-2026-02/`.
+
+También se puede publicar sin Actions seleccionando **Deploy from a branch → main → /docs**, dado que el bundle está incluido en el repositorio. En ese modo hay que ejecutar `python scripts/build_pages.py` después de modificar la aplicación y subir el resultado.
+
+La primera carga descarga el runtime Python/WebAssembly y puede tardar. Se requiere un navegador moderno con JavaScript y acceso a los CDN usados por Stlite. Esta variante depende del Streamlit incluido con Stlite, mientras que la ejecución tradicional usa la versión de `requirements.txt`.
