@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Experto de Crédito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --paper-raised:#FBFAF6;
+    --ink:#1F2A24;
+    --ink-soft:#4B564E;
+    --line:#D8D1BF;
+    --moss:#3F6E52;
+    --moss-bg:#E7EEE7;
+    --amber:#A9762C;
+    --amber-bg:#F3E9D6;
+    --rust:#9C3B2E;
+    --rust-bg:#F3E0DB;
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Sans 3', sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .page{
+    max-width:760px;
+    margin:0 auto;
+    padding:64px 24px 96px;
+  }
+
+  header.masthead{
+    border-bottom:2px solid var(--ink);
+    padding-bottom:22px;
+    margin-bottom:40px;
+  }
+
+  header.masthead .kicker{
+    font-size:13px;
+    color:var(--ink-soft);
+    letter-spacing:0.02em;
+    margin-bottom:10px;
+  }
+
+  header.masthead h1{
+    font-family:'Lora', serif;
+    font-weight:700;
+    font-size:clamp(30px, 5vw, 42px);
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+  }
+
+  header.masthead p{
+    max-width:52ch;
+    color:var(--ink-soft);
+    font-size:16px;
+    margin:0;
+  }
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:36px;
+  }
+
+  fieldset{
+    border:none;
+    padding:0;
+    margin:0 0 32px;
+  }
+
+  fieldset:last-of-type{ margin-bottom:0; }
+
+  legend{
+    font-family:'Lora', serif;
+    font-weight:600;
+    font-size:18px;
+    padding:0 0 14px;
+    width:100%;
+    border-bottom:1px solid var(--line);
+    margin-bottom:20px;
+  }
+
+  .row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+
+  .field{
+    margin-bottom:18px;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .field.full{ grid-column:1 / -1; }
+
+  label{
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:6px;
+  }
+
+  .hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:5px;
+  }
+
+  input{
+    font-family:'Source Sans 3', sans-serif;
+    font-size:15.5px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:#fff;
+    color:var(--ink);
+    outline:none;
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input:focus{
+    border-color:var(--moss);
+    box-shadow:0 0 0 3px var(--moss-bg);
+  }
+
+  input:invalid:not(:placeholder-shown){
+    border-color:var(--rust);
+  }
+
+  .submit-row{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-top:8px;
+  }
+
+  button{
+    font-family:'Source Sans 3', sans-serif;
+    font-weight:600;
+    font-size:15.5px;
+    padding:13px 28px;
+    background:var(--ink);
+    color:var(--paper-raised);
+    border:none;
+    border-radius:2px;
+    cursor:pointer;
+    transition:transform 0.12s ease, background 0.15s ease;
+  }
+
+  button:hover{ background:#33413A; }
+  button:active{ transform:scale(0.98); }
+
+  .error-msg{
+    color:var(--rust);
+    font-size:14px;
+    display:none;
+  }
+
+  /* ---- Result ---- */
+
+  #resultado{
+    margin-top:40px;
+    display:none;
+  }
+
+  .verdict{
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:32px 36px;
+    background:var(--paper-raised);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .verdict::before{
+    content:"";
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:6px;
+  }
+
+  .verdict.aprobado::before{ background:var(--moss); }
+  .verdict.revision::before{ background:var(--amber); }
+  .verdict.rechazado::before{ background:var(--rust); }
+
+  .stamp{
+    display:inline-block;
+    font-family:'Lora', serif;
+    font-weight:700;
+    font-size:15px;
+    padding:6px 16px;
+    border-radius:2px;
+    border:2px solid currentColor;
+    letter-spacing:0.04em;
+    transform:rotate(-2deg);
+    opacity:0;
+    animation:stampIn 0.35s ease-out 0.05s forwards;
+  }
+
+  @keyframes stampIn{
+    from{ opacity:0; transform:rotate(-2deg) scale(1.4); }
+    to{ opacity:1; transform:rotate(-2deg) scale(1); }
+  }
+
+  .verdict.aprobado .stamp{ color:var(--moss); background:var(--moss-bg); }
+  .verdict.revision .stamp{ color:var(--amber); background:var(--amber-bg); }
+  .verdict.rechazado .stamp{ color:var(--rust); background:var(--rust-bg); }
+
+  .verdict .explicacion{
+    font-size:16px;
+    margin:16px 0 26px;
+    max-width:56ch;
+  }
+
+  .datos-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:10px 28px;
+    border-top:1px solid var(--line);
+    padding-top:20px;
+  }
+
+  .datos-grid div{
+    display:flex;
+    justify-content:space-between;
+    font-size:14.5px;
+    padding:4px 0;
+    border-bottom:1px dotted var(--line);
+  }
+
+  .datos-grid span.k{ color:var(--ink-soft); }
+  .datos-grid span.v{ font-weight:600; }
+
+  .reset-link{
+    display:inline-block;
+    margin-top:22px;
+    font-size:14px;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    cursor:pointer;
+    background:none;
+    border:none;
+    padding:0;
+    font-family:inherit;
+  }
+
+  @media (max-width:560px){
+    .row, .datos-grid{ grid-template-columns:1fr; }
+    .card{ padding:24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .stamp{ animation:none; opacity:1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="kicker">Evaluación automatizada de solicitudes</div>
+    <h1>Sistema experto de crédito</h1>
+    <p>Complete el expediente del solicitante. El motor de inferencia aplica las mismas reglas de score, endeudamiento, estabilidad laboral y capacidad de pago para emitir una decisión.</p>
+  </header>
+
+  <div class="card">
+    <form id="form-credito" novalidate>
+
+      <fieldset>
+        <legend>Datos del solicitante</legend>
+        <div class="field full">
+          <label for="nombre">Nombre del cliente</label>
+          <input type="text" id="nombre" required placeholder="Ej. Santiago">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="edad">Edad</label>
+            <input type="number" id="edad" min="0" step="1" required>
+          </div>
+          <div class="field">
+            <label for="ingreso_mensual">Ingreso mensual ($)</label>
+            <input type="number" id="ingreso_mensual" min="0" step="any" required>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Solicitud de crédito</legend>
+        <div class="row">
+          <div class="field">
+            <label for="monto_credito">Monto solicitado ($)</label>
+            <input type="number" id="monto_credito" min="0" step="any" required>
+          </div>
+          <div class="field">
+            <label for="plazo">Plazo solicitado (años)</label>
+            <input type="number" id="plazo" min="0.1" step="any" required>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Historial crediticio</legend>
+        <div class="row">
+          <div class="field">
+            <label for="score">Score crediticio</label>
+            <input type="number" id="score" min="0" max="1000" step="1" required>
+            <span class="hint">300–850 aprox.</span>
+          </div>
+          <div class="field">
+            <label for="endeudamiento">Nivel de endeudamiento (%)</label>
+            <input type="number" id="endeudamiento" min="0" max="100" step="any" required>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="antiguedad_empleo_actual">Antigüedad en el empleo actual (años)</label>
+            <input type="number" id="antiguedad_empleo_actual" min="0" step="any" required>
+          </div>
+          <div class="field">
+            <label for="reportes_negativos">Número de reportes negativos</label>
+            <input type="number" id="reportes_negativos" min="0" step="1" required>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="submit-row">
+        <button type="submit">Evaluar solicitud</button>
+        <span class="error-msg" id="error-msg">Por favor complete todos los campos correctamente.</span>
+      </div>
+
+    </form>
+  </div>
+
+  <div id="resultado"></div>
+
+</div>
+
+<script>
+// ===================== MOTOR DE INFERENCIA (misma lógica del notebook) =====================
+
+function evaluarScore(score){
+  if (score >= 750) return "BUENO";
+  if (score >= 550) return "REGULAR";
+  return "MALO";
+}
+
+function evaluarEndeudamiento(endeudamiento){
+  if (endeudamiento <= 40) return "BAJO";
+  if (endeudamiento <= 60) return "MEDIO";
+  return "ALTO";
+}
+
+function evaluarEstabilidadActual(antiguedadActual, edad){
+  if (edad >= 17 && edad <= 20){
+    return antiguedadActual >= 1 ? "ESTABLE" : "N/A";
+  } else if (edad >= 21 && edad <= 24){
+    return antiguedadActual >= 1 ? "ESTABLE" : "MEDIA";
+  } else if (edad >= 25 && edad <= 35){
+    if (antiguedadActual >= 4) return "ESTABLE";
+    if (antiguedadActual >= 2) return "MEDIA";
+    return "BAJA";
+  } else if (edad >= 36 && edad <= 50){
+    if (antiguedadActual >= 6) return "ESTABLE";
+    if (antiguedadActual >= 4) return "MEDIA";
+    return "BAJA";
+  } else if (edad >= 51 && edad <= 65){
+    if (antiguedadActual >= 8) return "ESTABLE";
+    if (antiguedadActual >= 6) return "MEDIA";
+    return "BAJA";
+  }
+  return "N/A";
+}
+
+function evaluarCapacidadPago(plazo, ingreso, montoCredito){
+  const cuota = montoCredito / (plazo * 12);
+  const relacion = cuota / ingreso;
+
+  if (relacion >= 0 && relacion <= 0.2) return "BUENA";
+  if (relacion > 0.2 && relacion <= 0.3) return "MEDIA";
+  if (relacion > 0.3 && relacion <= 0.4) return "REVISAR";
+  return "BAJA";
+}
+
+function motorInferencia(cliente){
+  const perfilScore = evaluarScore(cliente.score);
+  const nivelDeuda = evaluarEndeudamiento(cliente.endeudamiento);
+  const estabilidadActual = evaluarEstabilidadActual(cliente.antiguedad_empleo_actual, cliente.edad);
+  const capacidadPago = evaluarCapacidadPago(cliente.plazo, cliente.ingreso_mensual, cliente.monto_credito);
+
+  // REGLAS DE RECHAZO
+  if (capacidadPago === "BAJA"){
+    return { decision: "RECHAZADO", explicacion: "El cliente no tiene suficiente capacidad de pago." };
+  }
+  if (cliente.reportes_negativos >= 2){
+    return { decision: "RECHAZADO", explicacion: "El cliente tiene dos o más reportes negativos." };
+  }
+  if (perfilScore === "MALO"){
+    return { decision: "RECHAZADO", explicacion: "El score crediticio es demasiado bajo." };
+  }
+  if (nivelDeuda === "ALTO"){
+    return { decision: "RECHAZADO", explicacion: "El nivel de endeudamiento es demasiado alto." };
+  }
+
+  // REGLAS DE APROBACIÓN
+  if (
+    perfilScore === "BUENO" &&
+    nivelDeuda === "BAJO" &&
+    (estabilidadActual === "ESTABLE" || estabilidadActual === "N/A") &&
+    (capacidadPago === "BUENA" || (capacidadPago === "MEDIA" && nivelDeuda === "BAJO")) &&
+    cliente.reportes_negativos === 0
+  ){
+    return { decision: "APROBADO", explicacion: "El cliente presenta un buen perfil financiero." };
+  }
+
+  // REGLAS DE REVISIÓN
+  if (
+    perfilScore === "REGULAR" ||
+    capacidadPago === "REVISAR" ||
+    nivelDeuda === "MEDIO" ||
+    estabilidadActual === "MEDIA" ||
+    cliente.reportes_negativos === 1
+  ){
+    return { decision: "REVISIÓN", explicacion: "El cliente presenta condiciones intermedias y necesita una evaluación adicional." };
+  }
+
+  return { decision: "REVISIÓN", explicacion: "La solicitud necesita ser revisada con mayor detalle." };
+}
+
+// ===================== INTERFAZ =====================
+
+const form = document.getElementById('form-credito');
+const resultadoDiv = document.getElementById('resultado');
+const errorMsg = document.getElementById('error-msg');
+
+const fmtMoney = n => '$ ' + n.toLocaleString('es-CO', {maximumFractionDigits: 0});
+
+const decisionMeta = {
+  "APROBADO":  { cls: "aprobado",  label: "APROBADO" },
+  "REVISIÓN":  { cls: "revision",  label: "EN REVISIÓN" },
+  "RECHAZADO": { cls: "rechazado", label: "RECHAZADO" }
+};
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+
+  if (!form.checkValidity()){
+    errorMsg.style.display = 'inline';
+    form.reportValidity();
+    return;
+  }
+  errorMsg.style.display = 'none';
+
+  const cliente = {
+    nombre: document.getElementById('nombre').value.trim(),
+    edad: parseInt(document.getElementById('edad').value, 10),
+    ingreso_mensual: parseFloat(document.getElementById('ingreso_mensual').value),
+    monto_credito: parseFloat(document.getElementById('monto_credito').value),
+    plazo: parseFloat(document.getElementById('plazo').value),
+    score: parseInt(document.getElementById('score').value, 10),
+    endeudamiento: parseFloat(document.getElementById('endeudamiento').value),
+    antiguedad_empleo_actual: parseFloat(document.getElementById('antiguedad_empleo_actual').value),
+    reportes_negativos: parseInt(document.getElementById('reportes_negativos').value, 10)
+  };
+
+  const { decision, explicacion } = motorInferencia(cliente);
+  const meta = decisionMeta[decision];
+
+  resultadoDiv.innerHTML = `
+    <div class="verdict ${meta.cls}">
+      <span class="stamp">${meta.label}</span>
+      <p class="explicacion">${explicacion}</p>
+      <div class="datos-grid">
+        <div><span class="k">Cliente</span><span class="v">${cliente.nombre}</span></div>
+        <div><span class="k">Edad</span><span class="v">${cliente.edad}</span></div>
+        <div><span class="k">Ingreso mensual</span><span class="v">${fmtMoney(cliente.ingreso_mensual)}</span></div>
+        <div><span class="k">Monto solicitado</span><span class="v">${fmtMoney(cliente.monto_credito)}</span></div>
+        <div><span class="k">Plazo</span><span class="v">${cliente.plazo} años</span></div>
+        <div><span class="k">Score</span><span class="v">${cliente.score}</span></div>
+        <div><span class="k">Endeudamiento</span><span class="v">${cliente.endeudamiento}%</span></div>
+        <div><span class="k">Antigüedad laboral</span><span class="v">${cliente.antiguedad_empleo_actual} años</span></div>
+        <div><span class="k">Reportes negativos</span><span class="v">${cliente.reportes_negativos}</span></div>
+      </div>
+      <button type="button" class="reset-link" id="btn-nueva">Evaluar otra solicitud</button>
+    </div>
+  `;
+  resultadoDiv.style.display = 'block';
+  resultadoDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  document.getElementById('btn-nueva').addEventListener('click', function(){
+    resultadoDiv.style.display = 'none';
+    resultadoDiv.innerHTML = '';
+    form.reset();
+    document.getElementById('nombre').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+
+</body>
+</html>

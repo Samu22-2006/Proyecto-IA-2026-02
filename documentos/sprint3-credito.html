@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema experto + estrategia evolutiva de crédito (Sprint 3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --paper-raised:#FBFAF6;
+    --ink:#1F2A24;
+    --ink-soft:#4B564E;
+    --line:#D8D1BF;
+    --moss:#3F6E52;    --moss-bg:#E7EEE7;
+    --amber:#A9762C;   --amber-bg:#F3E9D6;
+    --rust:#9C3B2E;    --rust-bg:#F3E0DB;
+    --slate:#3E5B70;   --slate-bg:#E4EBEF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Sans 3', sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  code, .mono{ font-family:'JetBrains Mono', monospace; }
+
+  .page{ max-width:780px; margin:0 auto; padding:64px 24px 96px; }
+
+  header.masthead{
+    border-bottom:2px solid var(--ink);
+    padding-bottom:22px;
+    margin-bottom:40px;
+  }
+  header.masthead .kicker{ font-size:13px; color:var(--ink-soft); margin-bottom:10px; }
+  header.masthead h1{
+    font-family:'Lora', serif;
+    font-weight:700;
+    font-size:clamp(26px, 4.4vw, 38px);
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+  }
+  header.masthead p{ max-width:58ch; color:var(--ink-soft); font-size:16px; margin:0; }
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:36px;
+  }
+
+  fieldset{ border:none; padding:0; margin:0 0 32px; }
+  fieldset:last-of-type{ margin-bottom:0; }
+
+  legend{
+    font-family:'Lora', serif;
+    font-weight:600;
+    font-size:18px;
+    padding:0 0 14px;
+    width:100%;
+    border-bottom:1px solid var(--line);
+    margin-bottom:20px;
+  }
+
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .field{ margin-bottom:18px; display:flex; flex-direction:column; }
+  .field.full{ grid-column:1 / -1; }
+
+  label{ font-size:14px; font-weight:600; color:var(--ink); margin-bottom:6px; }
+  .hint{ font-size:12.5px; color:var(--ink-soft); margin-top:5px; }
+
+  input{
+    font-family:'Source Sans 3', sans-serif;
+    font-size:15.5px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:#fff;
+    color:var(--ink);
+    outline:none;
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input:focus{ border-color:var(--moss); box-shadow:0 0 0 3px var(--moss-bg); }
+  input.invalid{ border-color:var(--rust); }
+
+  .submit-row{ display:flex; align-items:center; gap:16px; margin-top:8px; flex-wrap:wrap; }
+
+  button{
+    font-family:'Source Sans 3', sans-serif;
+    font-weight:600;
+    font-size:15.5px;
+    padding:13px 28px;
+    background:var(--ink);
+    color:var(--paper-raised);
+    border:none;
+    border-radius:2px;
+    cursor:pointer;
+    transition:transform 0.12s ease, background 0.15s ease;
+  }
+  button:hover{ background:#33413A; }
+  button:active{ transform:scale(0.98); }
+  button:disabled{ opacity:0.6; cursor:default; }
+
+  .error-msg{ color:var(--rust); font-size:14px; }
+
+  /* ---- Resultado del motor experto ---- */
+
+  #resultado{ margin-top:40px; display:none; }
+
+  .verdict{
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:32px 36px;
+    background:var(--paper-raised);
+    position:relative;
+    overflow:hidden;
+  }
+  .verdict::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:6px; }
+  .verdict.aprobado::before{ background:var(--moss); }
+  .verdict.revision::before{ background:var(--amber); }
+  .verdict.rechazado::before{ background:var(--rust); }
+
+  .stamp{
+    display:inline-block;
+    font-family:'Lora', serif;
+    font-weight:700;
+    font-size:15px;
+    padding:6px 16px;
+    border-radius:2px;
+    border:2px solid currentColor;
+    letter-spacing:0.04em;
+    transform:rotate(-2deg);
+    opacity:0;
+    animation:stampIn 0.35s ease-out 0.05s forwards;
+  }
+  @keyframes stampIn{ from{ opacity:0; transform:rotate(-2deg) scale(1.4); } to{ opacity:1; transform:rotate(-2deg) scale(1); } }
+
+  .verdict.aprobado .stamp{ color:var(--moss); background:var(--moss-bg); }
+  .verdict.revision .stamp{ color:var(--amber); background:var(--amber-bg); }
+  .verdict.rechazado .stamp{ color:var(--rust); background:var(--rust-bg); }
+
+  .verdict .explicacion{ font-size:16px; margin:16px 0 26px; max-width:56ch; }
+
+  .datos-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:10px 28px;
+    border-top:1px solid var(--line);
+    padding-top:20px;
+  }
+  .datos-grid div{
+    display:flex; justify-content:space-between;
+    font-size:14.5px; padding:4px 0;
+    border-bottom:1px dotted var(--line);
+  }
+  .datos-grid span.k{ color:var(--ink-soft); }
+  .datos-grid span.v{ font-weight:600; }
+
+  /* ---- Contraoferta (estrategia evolutiva) ---- */
+
+  #contraoferta{ margin-top:28px; display:none; }
+
+  .evo-card{
+    border:2px dashed var(--amber);
+    border-radius:3px;
+    padding:30px 34px;
+    background:#FDF8EF;
+  }
+
+  .evo-head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .evo-head .evo-badge{
+    font-family:'Lora', serif; font-weight:700; font-size:13px;
+    background:var(--amber-bg); color:var(--amber);
+    padding:5px 12px; border-radius:2px;
+  }
+  .evo-head h3{ font-family:'Lora', serif; font-size:19px; font-weight:600; margin:0; }
+
+  .evo-params{ font-size:13px; color:var(--ink-soft); margin:4px 0 22px; }
+  .evo-params code{ background:var(--paper); border:1px solid var(--line); border-radius:2px; padding:2px 6px; }
+
+  .offer-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:22px;
+  }
+
+  .offer-item{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:14px 16px;
+  }
+  .offer-item .lbl{ font-size:12px; color:var(--ink-soft); margin-bottom:4px; }
+  .offer-item .val{ font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:600; }
+  .offer-item.highlight{ border-color:var(--moss); background:var(--moss-bg); }
+  .offer-item.highlight .val{ color:var(--moss); }
+
+  .decision-pill-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--line);
+    padding-top:16px;
+    margin-bottom:14px;
+  }
+  .decision-pill{
+    font-weight:700;
+    font-size:12.5px;
+    padding:4px 11px;
+    border-radius:2px;
+  }
+  .decision-pill.aprobado{ background:var(--moss-bg); color:var(--moss); }
+  .decision-pill.revision{ background:var(--amber-bg); color:var(--amber); }
+  .decision-pill.rechazado{ background:var(--rust-bg); color:var(--rust); }
+
+  .utility-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:22px;
+  }
+  .utility-item{
+    background:var(--slate-bg);
+    border:1px solid var(--slate);
+    border-radius:3px;
+    padding:12px 16px;
+    text-align:center;
+  }
+  .utility-item .lbl{ font-size:12px; color:var(--slate); margin-bottom:4px; }
+  .utility-item .val{ font-family:'JetBrains Mono', monospace; font-size:17px; font-weight:700; color:var(--slate); }
+
+  .offer-compare{
+    display:flex;
+    justify-content:space-between;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin-bottom:22px;
+  }
+  .offer-compare .mono{ font-weight:600; color:var(--ink); }
+
+  .chart-wrap{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:18px 18px 10px;
+  }
+  .chart-wrap .chart-title{ font-size:13px; color:var(--ink-soft); margin-bottom:10px; }
+  canvas{ max-width:100%; }
+
+  .loading-note{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    text-align:center;
+    padding:20px;
+    display:none;
+  }
+
+  .reset-link{
+    display:inline-block;
+    margin-top:22px;
+    font-size:14px;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    cursor:pointer;
+    background:none;
+    border:none;
+    padding:0;
+    font-family:inherit;
+  }
+
+  @media (max-width:560px){
+    .row, .datos-grid, .offer-grid, .utility-grid{ grid-template-columns:1fr; }
+    .card, .evo-card{ padding:24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="kicker">Sprint 3 · Sistema experto + metaheurística</div>
+    <h1>Evaluación de crédito con contraoferta automática</h1>
+    <p>El motor de inferencia calcula la cuota con la tasa efectiva anual y decide primero. Si la solicitud queda en <strong>REVISIÓN</strong>, una estrategia evolutiva (μ+λ) busca el monto y plazo que vuelven la oferta aprobable, balanceando la utilidad del cliente y la del prestamista.</p>
+  </header>
+
+  <div class="card">
+    <form id="form-credito" novalidate>
+
+      <fieldset>
+        <legend>Datos del solicitante</legend>
+        <div class="field full">
+          <label for="nombre">Nombre del cliente</label>
+          <input type="text" id="nombre" required placeholder="Ej. Santiago">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="edad">Edad</label>
+            <input type="number" id="edad" min="0" step="1" required>
+          </div>
+          <div class="field">
+            <label for="ingreso_mensual">Ingreso mensual ($)</label>
+            <input type="number" id="ingreso_mensual" min="0.01" step="any" required>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Solicitud de crédito</legend>
+        <div class="row">
+          <div class="field">
+            <label for="monto_credito">Monto solicitado ($)</label>
+            <input type="number" id="monto_credito" min="0.01" step="any" required>
+          </div>
+          <div class="field">
+            <label for="plazo">Plazo solicitado (años)</label>
+            <input type="number" id="plazo" min="0.0834" max="20" step="any" required>
+            <span class="hint">Mayor que 0 y máximo 20 años, en meses completos (ej. 5 o 5.5).</span>
+          </div>
+        </div>
+        <div class="field full">
+          <label for="tasa_anual">Tasa de interés efectiva anual (%)</label>
+          <input type="number" id="tasa_anual" min="0" step="any" required>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Historial crediticio</legend>
+        <div class="row">
+          <div class="field">
+            <label for="score">Score crediticio</label>
+            <input type="number" id="score" min="0" step="1" required>
+            <span class="hint">300–850 aprox.</span>
+          </div>
+          <div class="field">
+            <label for="endeudamiento">Nivel de endeudamiento (%)</label>
+            <input type="number" id="endeudamiento" min="0" max="100" step="any" required>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="antiguedad_empleo_actual">Antigüedad en el empleo actual (años)</label>
+            <input type="number" id="antiguedad_empleo_actual" min="0" step="any" required>
+          </div>
+          <div class="field">
+            <label for="reportes_negativos">Número de reportes negativos</label>
+            <input type="number" id="reportes_negativos" min="0" step="1" required>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="submit-row">
+        <button type="submit" id="btn-evaluar">Evaluar solicitud</button>
+        <span class="error-msg" id="error-msg"></span>
+      </div>
+
+    </form>
+  </div>
+
+  <div id="resultado"></div>
+
+  <div class="loading-note" id="loading-note">Ejecutando estrategia evolutiva (μ=6, λ=12, 50 generaciones)…</div>
+
+  <div id="contraoferta"></div>
+
+</div>
+
+<script>
+// ===================== MOTOR DE INFERENCIA =====================
+
+function evaluarScore(score){
+  if (score >= 750) return "BUENO";
+  if (score >= 550) return "REGULAR";
+  return "MALO";
+}
+
+function evaluarEndeudamiento(endeudamiento){
+  if (endeudamiento <= 40) return "BAJO";
+  if (endeudamiento <= 60) return "MEDIO";
+  return "ALTO";
+}
+
+function evaluarEstabilidadActual(antiguedadActual, edad){
+  if (edad >= 17 && edad <= 20) return antiguedadActual >= 1 ? "ESTABLE" : "N/A";
+  if (edad >= 21 && edad <= 24) return antiguedadActual >= 1 ? "ESTABLE" : "MEDIA";
+  if (edad >= 25 && edad <= 35){
+    if (antiguedadActual >= 4) return "ESTABLE";
+    if (antiguedadActual >= 2) return "MEDIA";
+    return "BAJA";
+  }
+  if (edad >= 36 && edad <= 50){
+    if (antiguedadActual >= 6) return "ESTABLE";
+    if (antiguedadActual >= 4) return "MEDIA";
+    return "BAJA";
+  }
+  if (edad >= 51 && edad <= 65){
+    if (antiguedadActual >= 8) return "ESTABLE";
+    if (antiguedadActual >= 6) return "MEDIA";
+    return "BAJA";
+  }
+  return "N/A";
+}
+
+function convertirTasaMensual(tasaAnual){
+  const tasaDecimal = tasaAnual / 100;
+  return Math.pow(1 + tasaDecimal, 1 / 12) - 1;
+}
+
+function calcularCuota(montoCredito, plazo, tasaAnual){
+  const tasaMensual = convertirTasaMensual(tasaAnual);
+  const meses = Math.round(plazo * 12);
+  if (meses <= 0) throw new Error("El plazo debe ser positivo.");
+  if (tasaMensual === 0) return montoCredito / meses;
+  return montoCredito * tasaMensual / (1 - Math.pow(1 + tasaMensual, -meses));
+}
+
+function evaluarCapacidadPago(cuota, ingresoMensual){
+  const relacion = cuota / ingresoMensual;
+  if (relacion >= 0 && relacion <= 0.2) return "BUENA";
+  if (relacion > 0.2 && relacion <= 0.3) return "MEDIA";
+  if (relacion > 0.3 && relacion <= 0.4) return "REVISAR";
+  return "BAJA";
+}
+
+function motorInferencia(cliente){
+  const perfilScore = evaluarScore(cliente.score);
+  const nivelDeuda = evaluarEndeudamiento(cliente.endeudamiento);
+  const estabilidadActual = evaluarEstabilidadActual(cliente.antiguedad_empleo_actual, cliente.edad);
+  const cuota = calcularCuota(cliente.monto_credito, cliente.plazo, cliente.tasa_anual);
+  const capacidadPago = evaluarCapacidadPago(cuota, cliente.ingreso_mensual);
+
+  if (capacidadPago === "BAJA"){
+    return { decision: "RECHAZADO", explicacion: "El cliente no tiene suficiente capacidad de pago.", cuota, capacidadPago };
+  }
+  if (cliente.reportes_negativos >= 2){
+    return { decision: "RECHAZADO", explicacion: "El cliente tiene dos o más reportes negativos.", cuota, capacidadPago };
+  }
+  if (perfilScore === "MALO"){
+    return { decision: "RECHAZADO", explicacion: "El score crediticio es demasiado bajo.", cuota, capacidadPago };
+  }
+  if (nivelDeuda === "ALTO"){
+    return { decision: "RECHAZADO", explicacion: "El nivel de endeudamiento es demasiado alto.", cuota, capacidadPago };
+  }
+
+  if (
+    perfilScore === "BUENO" &&
+    nivelDeuda === "BAJO" &&
+    (estabilidadActual === "ESTABLE" || estabilidadActual === "N/A") &&
+    (capacidadPago === "BUENA" || (capacidadPago === "MEDIA" && nivelDeuda === "BAJO")) &&
+    cliente.reportes_negativos === 0
+  ){
+    return { decision: "APROBADO", explicacion: "El cliente presenta un buen perfil financiero.", cuota, capacidadPago };
+  }
+
+  if (
+    perfilScore === "REGULAR" ||
+    capacidadPago === "REVISAR" ||
+    nivelDeuda === "MEDIO" ||
+    estabilidadActual === "MEDIA" ||
+    cliente.reportes_negativos === 1
+  ){
+    return { decision: "REVISIÓN", explicacion: "El cliente presenta condiciones intermedias y necesita una evaluación adicional.", cuota, capacidadPago };
+  }
+
+  return { decision: "REVISIÓN", explicacion: "La solicitud necesita ser revisada con mayor detalle.", cuota, capacidadPago };
+}
+
+// ===================== ESTRATEGIA EVOLUTIVA (μ+λ) =====================
+
+function randomUniform(min, max){
+  return Math.random() * (max - min) + min;
+}
+
+function randomInt(min, max){
+  // inclusivo en ambos extremos, igual que random.randint de Python
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function crearIndividuo(cliente){
+  const montoOriginal = cliente.monto_credito;
+  const mesesOriginal = Math.round(cliente.plazo * 12);
+  const monto = randomUniform(montoOriginal * 0.70, montoOriginal);
+  const meses = randomInt(mesesOriginal, 240);
+  return [monto, meses / 12];
+}
+
+function crearPoblacion(cliente, tamano){
+  const poblacion = [];
+  for (let i = 0; i < tamano; i++){
+    poblacion.push(crearIndividuo(cliente));
+  }
+  return poblacion;
+}
+
+function calcularFitness(individuo, cliente){
+  const monto = individuo[0];
+  const plazo = individuo[1];
+  const montoOriginal = cliente.monto_credito;
+  const plazoOriginal = cliente.plazo;
+
+  const cuota = calcularCuota(monto, plazo, cliente.tasa_anual);
+  const capacidad = Math.max(0, Math.min(1, 1 - cuota / cliente.ingreso_mensual));
+  const cercaniaMonto = Math.max(0, Math.min(1, monto / montoOriginal));
+
+  let cercaniaPlazo;
+  if (plazoOriginal === 20){
+    cercaniaPlazo = 1;
+  } else {
+    cercaniaPlazo = Math.max(0, Math.min(1, 1 - (plazo - plazoOriginal) / (20 - plazoOriginal)));
+  }
+
+  // Penalizar ofertas que el motor no aprobaría
+  const oferta = Object.assign({}, cliente, { monto_credito: monto, plazo: plazo });
+  const { decision } = motorInferencia(oferta);
+  const penalizacion = decision === "APROBADO" ? 0 : 1;
+
+  return 0.50 * capacidad + 0.25 * cercaniaMonto + 0.25 * cercaniaPlazo - penalizacion;
+}
+
+function calcularInteresesTotales(monto, plazo, tasaAnual){
+  const cuota = calcularCuota(monto, plazo, tasaAnual);
+  const meses = plazo * 12;
+  return cuota * meses - monto;
+}
+
+function utilidadCliente(monto, plazo, cliente){
+  const montoOriginal = cliente.monto_credito;
+  const plazoOriginal = cliente.plazo;
+  const tasaAnual = cliente.tasa_anual;
+
+  const cercaniaMonto = monto / montoOriginal;
+
+  let cercaniaPlazo;
+  if (plazoOriginal === 20){
+    cercaniaPlazo = 1;
+  } else {
+    cercaniaPlazo = 1 - (plazo - plazoOriginal) / (20 - plazoOriginal);
+  }
+
+  const intereses = calcularInteresesTotales(monto, plazo, tasaAnual);
+  const interesesReferencia = calcularInteresesTotales(montoOriginal, 20, tasaAnual);
+
+  let convenienciaIntereses;
+  if (interesesReferencia === 0){
+    convenienciaIntereses = 1;
+  } else {
+    convenienciaIntereses = 1 - (intereses / interesesReferencia);
+  }
+  convenienciaIntereses = Math.max(0, Math.min(1, convenienciaIntereses));
+
+  return 0.40 * cercaniaMonto + 0.30 * cercaniaPlazo + 0.30 * convenienciaIntereses;
+}
+
+function utilidadPrestamista(monto, plazo, cliente){
+  const tasaAnual = cliente.tasa_anual;
+  const ingreso = cliente.ingreso_mensual;
+  const montoOriginal = cliente.monto_credito;
+
+  const cuota = calcularCuota(monto, plazo, tasaAnual);
+  const relacion = cuota / ingreso;
+  const capacidad = Math.max(0, Math.min(1, 1 - relacion));
+
+  const intereses = calcularInteresesTotales(monto, plazo, tasaAnual);
+  const interesesReferencia = calcularInteresesTotales(montoOriginal, 20, tasaAnual);
+
+  let ingresosIntereses;
+  if (interesesReferencia === 0){
+    ingresosIntereses = 0;
+  } else {
+    ingresosIntereses = intereses / interesesReferencia;
+  }
+  ingresosIntereses = Math.max(0, Math.min(1, ingresosIntereses));
+
+  return 0.60 * capacidad + 0.40 * ingresosIntereses;
+}
+
+function mutar(individuo, cliente){
+  const hijo = individuo.slice();
+  hijo[0] += randomUniform(-0.05, 0.05) * cliente.monto_credito;
+  const meses = Math.round(hijo[1] * 12) + randomInt(-6, 6);
+  hijo[1] = meses / 12;
+  return hijo;
+}
+
+function reparar(individuo, cliente){
+  const montoOriginal = cliente.monto_credito;
+  individuo[0] = Math.max(montoOriginal * 0.70, Math.min(montoOriginal, individuo[0]));
+  const mesesOriginal = Math.round(cliente.plazo * 12);
+  const meses = Math.max(mesesOriginal, Math.min(240, Math.round(individuo[1] * 12)));
+  individuo[1] = meses / 12;
+  return individuo;
+}
+
+function estrategiaEvolutiva(cliente, mu, lambda_, generaciones){
+  const historialFitness = [];
+  let poblacion = crearPoblacion(cliente, mu);
+
+  for (let g = 0; g < generaciones; g++){
+    poblacion.sort((a, b) => calcularFitness(b, cliente) - calcularFitness(a, cliente));
+    const padres = poblacion.slice(0, mu);
+
+    const descendientes = [];
+    for (let i = 0; i < lambda_; i++){
+      const padre = padres[Math.floor(Math.random() * padres.length)];
+      let hijo = mutar(padre, cliente);
+      hijo = reparar(hijo, cliente);
+      descendientes.push(hijo);
+    }
+
+    let candidatos = padres.concat(descendientes);
+    candidatos.sort((a, b) => calcularFitness(b, cliente) - calcularFitness(a, cliente));
+    poblacion = candidatos.slice(0, mu);
+
+    historialFitness.push(calcularFitness(poblacion[0], cliente));
+  }
+
+  const mejorIndividuo = poblacion[0];
+  const mejorFitness = calcularFitness(mejorIndividuo, cliente);
+
+  return { mejorIndividuo, mejorFitness, historialFitness };
+}
+
+// ===================== VALIDACIÓN =====================
+
+function validarCliente(cliente){
+  if (cliente.ingreso_mensual <= 0 || cliente.monto_credito <= 0){
+    return "El ingreso y el monto deben ser positivos.";
+  }
+  if (!(cliente.plazo > 0 && cliente.plazo <= 20)){
+    return "El plazo debe ser mayor que 0 y máximo 20 años.";
+  }
+  const meses = cliente.plazo * 12;
+  if (Math.round(meses) !== meses && Math.abs(Math.round(meses) - meses) > 1e-6){
+    return "El plazo debe corresponder a meses completos (por ejemplo, 5 o 5.5 años).";
+  }
+  if (cliente.tasa_anual < 0){
+    return "La tasa efectiva anual no puede ser negativa.";
+  }
+  if (!(cliente.endeudamiento >= 0 && cliente.endeudamiento <= 100) || cliente.score < 0){
+    return "Revisa el score y el porcentaje de endeudamiento.";
+  }
+  if (cliente.reportes_negativos < 0 || cliente.antiguedad_empleo_actual < 0){
+    return "Los reportes y la antigüedad no pueden ser negativos.";
+  }
+  return null;
+}
+
+// ===================== INTERFAZ =====================
+
+const form = document.getElementById('form-credito');
+const resultadoDiv = document.getElementById('resultado');
+const contraofertaDiv = document.getElementById('contraoferta');
+const loadingNote = document.getElementById('loading-note');
+const errorMsg = document.getElementById('error-msg');
+const btnEvaluar = document.getElementById('btn-evaluar');
+
+let chartInstance = null;
+
+const fmtMoney = n => '$ ' + Math.round(n).toLocaleString('es-CO');
+
+const decisionMeta = {
+  "APROBADO":  { cls: "aprobado",  label: "APROBADO" },
+  "REVISIÓN":  { cls: "revision",  label: "EN REVISIÓN" },
+  "RECHAZADO": { cls: "rechazado", label: "RECHAZADO" }
+};
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+
+  if (!form.checkValidity()){
+    errorMsg.textContent = "Por favor complete todos los campos correctamente.";
+    form.reportValidity();
+    return;
+  }
+
+  const cliente = {
+    nombre: document.getElementById('nombre').value.trim(),
+    edad: parseInt(document.getElementById('edad').value, 10),
+    ingreso_mensual: parseFloat(document.getElementById('ingreso_mensual').value),
+    monto_credito: parseFloat(document.getElementById('monto_credito').value),
+    plazo: parseFloat(document.getElementById('plazo').value),
+    tasa_anual: parseFloat(document.getElementById('tasa_anual').value),
+    score: parseInt(document.getElementById('score').value, 10),
+    endeudamiento: parseFloat(document.getElementById('endeudamiento').value),
+    antiguedad_empleo_actual: parseFloat(document.getElementById('antiguedad_empleo_actual').value),
+    reportes_negativos: parseInt(document.getElementById('reportes_negativos').value, 10)
+  };
+
+  const errorValidacion = validarCliente(cliente);
+  if (errorValidacion){
+    errorMsg.textContent = errorValidacion;
+    return;
+  }
+  errorMsg.textContent = '';
+
+  contraofertaDiv.style.display = 'none';
+  contraofertaDiv.innerHTML = '';
+  if (chartInstance){ chartInstance.destroy(); chartInstance = null; }
+
+  const { decision, explicacion, cuota, capacidadPago } = motorInferencia(cliente);
+  const meta = decisionMeta[decision];
+
+  resultadoDiv.innerHTML = `
+    <div class="verdict ${meta.cls}">
+      <span class="stamp">${meta.label}</span>
+      <p class="explicacion">${explicacion}</p>
+      <div class="datos-grid">
+        <div><span class="k">Cliente</span><span class="v">${cliente.nombre}</span></div>
+        <div><span class="k">Edad</span><span class="v">${cliente.edad}</span></div>
+        <div><span class="k">Ingreso mensual</span><span class="v">${fmtMoney(cliente.ingreso_mensual)}</span></div>
+        <div><span class="k">Score</span><span class="v">${cliente.score}</span></div>
+        <div><span class="k">Endeudamiento</span><span class="v">${cliente.endeudamiento}%</span></div>
+        <div><span class="k">Monto solicitado</span><span class="v">${fmtMoney(cliente.monto_credito)}</span></div>
+        <div><span class="k">Plazo solicitado</span><span class="v">${cliente.plazo} años</span></div>
+        <div><span class="k">Tasa efectiva anual</span><span class="v">${cliente.tasa_anual}%</span></div>
+        <div><span class="k">Cuota mensual</span><span class="v">${fmtMoney(cuota)}</span></div>
+        <div><span class="k">Capacidad de pago</span><span class="v">${capacidadPago}</span></div>
+        <div><span class="k">Antigüedad laboral</span><span class="v">${cliente.antiguedad_empleo_actual} años</span></div>
+        <div><span class="k">Reportes negativos</span><span class="v">${cliente.reportes_negativos}</span></div>
+      </div>
+      <button type="button" class="reset-link" id="btn-nueva">Evaluar otra solicitud</button>
+    </div>
+  `;
+  resultadoDiv.style.display = 'block';
+  resultadoDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  document.getElementById('btn-nueva').addEventListener('click', function(){
+    resultadoDiv.style.display = 'none';
+    resultadoDiv.innerHTML = '';
+    contraofertaDiv.style.display = 'none';
+    contraofertaDiv.innerHTML = '';
+    if (chartInstance){ chartInstance.destroy(); chartInstance = null; }
+    form.reset();
+    document.getElementById('nombre').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ACTIVAR ESTRATEGIA EVOLUTIVA si quedó en REVISIÓN
+  if (decision === "REVISIÓN"){
+    loadingNote.style.display = 'block';
+    btnEvaluar.disabled = true;
+
+    setTimeout(function(){
+      const { mejorIndividuo, mejorFitness, historialFitness } = estrategiaEvolutiva(cliente, 6, 12, 50);
+
+      const [monto, plazo] = mejorIndividuo;
+      const cuotaOferta = calcularCuota(monto, plazo, cliente.tasa_anual);
+      const capacidadOferta = evaluarCapacidadPago(cuotaOferta, cliente.ingreso_mensual);
+
+      const ofertaCliente = Object.assign({}, cliente, { monto_credito: monto, plazo: plazo });
+      const { decision: decisionOferta } = motorInferencia(ofertaCliente);
+      const metaOferta = decisionMeta[decisionOferta];
+
+      const utilC = utilidadCliente(monto, plazo, cliente);
+      const utilP = utilidadPrestamista(monto, plazo, cliente);
+
+      loadingNote.style.display = 'none';
+      btnEvaluar.disabled = false;
+
+      contraofertaDiv.innerHTML = `
+        <div class="evo-card">
+          <div class="evo-head">
+            <span class="evo-badge">Estrategia evolutiva</span>
+            <h3>Contraoferta generada</h3>
+          </div>
+          <div class="evo-params">Parámetros: <code>μ = 6</code> · <code>λ = 12</code> · <code>50 generaciones</code></div>
+
+          <div class="offer-grid">
+            <div class="offer-item">
+              <div class="lbl">Monto solicitado originalmente</div>
+              <div class="val">${fmtMoney(cliente.monto_credito)}</div>
+            </div>
+            <div class="offer-item highlight">
+              <div class="lbl">Nuevo monto sugerido</div>
+              <div class="val">${fmtMoney(monto)}</div>
+            </div>
+            <div class="offer-item highlight">
+              <div class="lbl">Nuevo plazo</div>
+              <div class="val">${plazo.toFixed(2)} años</div>
+            </div>
+            <div class="offer-item highlight">
+              <div class="lbl">Cuota mensual</div>
+              <div class="val">${fmtMoney(cuotaOferta)}</div>
+            </div>
+          </div>
+
+          <div class="decision-pill-row">
+            <span>Capacidad de pago: <span class="mono">${capacidadOferta}</span></span>
+            <span>Decisión del motor para la contraoferta: <span class="decision-pill ${metaOferta.cls}">${metaOferta.label}</span></span>
+          </div>
+
+          <div class="utility-grid">
+            <div class="utility-item">
+              <div class="lbl">Utilidad del cliente</div>
+              <div class="val">${utilC.toFixed(4)}</div>
+            </div>
+            <div class="utility-item">
+              <div class="lbl">Utilidad del prestamista</div>
+              <div class="val">${utilP.toFixed(4)}</div>
+            </div>
+          </div>
+
+          <div class="offer-compare">
+            <span>Fitness de la contraoferta: <span class="mono">${mejorFitness.toFixed(4)}</span></span>
+            <span>Plazo original: <span class="mono">${cliente.plazo} años</span></span>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="chart-title">Convergencia del fitness por generación</div>
+            <canvas id="chart-convergencia" height="140"></canvas>
+          </div>
+        </div>
+      `;
+      contraofertaDiv.style.display = 'block';
+      contraofertaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      const ctx = document.getElementById('chart-convergencia').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: historialFitness.map((_, i) => i + 1),
+          datasets: [{
+            label: 'Mejor fitness',
+            data: historialFitness,
+            borderColor: '#A9762C',
+            backgroundColor: 'rgba(169, 118, 44, 0.12)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.15,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { title: { display: true, text: 'Generación' } },
+            y: { title: { display: true, text: 'Fitness' } }
+          }
+        }
+      });
+
+    }, 50);
+  }
+});
+</script>
+
+</body>
+</html>
